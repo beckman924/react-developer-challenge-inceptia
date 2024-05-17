@@ -1,0 +1,92 @@
+import { SignJWT, jwtVerify } from "jose";
+import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
+
+const key = new TextEncoder().encode(process.env.JWT_SECRET);
+
+async function encrypt(payload: any) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("1 day")
+    .sign(key);
+}
+
+async function decrypt(input: string): Promise<any> {
+  const { payload } = await jwtVerify(input, key, {
+    algorithms: ["HS256"],
+  });
+  return payload;
+}
+
+async function login() {
+  const data = await fetch(`${process.env.API_URL}/api/v1/login/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: process.env.API_USER,
+      password: process.env.API_PASSWORD,
+    }),
+  });
+
+  const expires = new Date(Date.now() + 60 * 60 * 24);
+  const session = await encrypt({
+    token: (await data.json()).token,
+    expires,
+  });
+
+  cookies().set("session", session, { expires, httpOnly: true });
+}
+
+async function getSession() {
+  const session = cookies().get("session")?.value;
+  if (!session) return;
+  return await decrypt(session);
+}
+
+export async function updateSession(request: NextRequest) {
+  const session = request.cookies.get("session")?.value;
+  if (!session) return;
+
+  // Refresh the session so it doesn't expire
+  const parsed = await decrypt(session);
+  parsed.expires = new Date(Date.now() + 60 * 60 * 24);
+  const res = NextResponse.next();
+  res.cookies.set({
+    name: "session",
+    value: await encrypt(parsed),
+    httpOnly: true,
+    expires: parsed.expires,
+  });
+  return res;
+}
+
+async function getClients() {
+  const session = await getSession();
+  if (!session) null;
+
+  const { token } = session;
+
+  const data = await fetch(`${process.env.API_URL}/api/v1/clients/`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `JWT ${token}`,
+    },
+  });
+
+  return await data.json();
+}
+
+export async function GET() {
+  await login();
+  const clients = await getClients();
+
+  if (!clients) {
+    return Response.json([]);
+  }
+
+  return Response.json(clients);
+}
