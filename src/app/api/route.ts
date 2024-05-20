@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -29,11 +29,16 @@ async function login() {
       email: process.env.API_USER,
       password: process.env.API_PASSWORD,
     }),
+    cache: "no-store",
   });
 
-  const expires = new Date(Date.now() + 60 * 60 * 24);
+  const res = await data.json();
+  const token = res.token;
+  const decoded = decodeJwt(token);
+  const expires = decoded.exp;
+
   const session = await encrypt({
-    token: (await data.json()).token,
+    token,
     expires,
   });
 
@@ -42,25 +47,20 @@ async function login() {
 
 async function getSession() {
   const session = cookies().get("session")?.value;
-  if (!session) return;
+  if (!session) return login();
   return await decrypt(session);
 }
 
 export async function updateSession(request: NextRequest) {
-  const session = request.cookies.get("session")?.value;
-  if (!session) return;
-
   // Refresh the session so it doesn't expire
+  const session = request.cookies.get("session")?.value;
+  if (!session) return login();
+
   const parsed = await decrypt(session);
-  parsed.expires = new Date(Date.now() + 60 * 60 * 24);
-  const res = NextResponse.next();
-  res.cookies.set({
-    name: "session",
-    value: await encrypt(parsed),
-    httpOnly: true,
-    expires: parsed.expires,
-  });
-  return res;
+
+  if (parsed.expires <= Date.now() / 1000) {
+    return login();
+  }
 }
 
 async function getClients() {
