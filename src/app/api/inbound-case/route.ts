@@ -1,14 +1,14 @@
-import { cookies } from "next/headers";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 
-import { decrypt } from "../route";
-import { updateSession } from "../route";
+import { updateSession, decrypt } from "../../../../lib";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     await updateSession(request);
 
-    const session = cookies().get("session")?.value;
+    const session = request.cookies.get("session")?.value;
 
     if (!session) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -51,7 +51,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (!response.ok) {
       const data = await response.json();
-      return new NextResponse("Error" + JSON.stringify(data), { status: 400 });
+      return new NextResponse(`Error: ${JSON.stringify(data)}`, {
+        status: 400,
+      });
     }
 
     const data = await response.json();
