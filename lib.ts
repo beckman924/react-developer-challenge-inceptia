@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify, decodeJwt } from "jose";
 
 const key = new TextEncoder().encode(process.env.JWT_SECRET!);
+const apiUrl = process.env.API_URL;
+const apiEmail = process.env.API_EMAIL;
+const apiPassword = process.env.API_PASSWORD;
 
 export async function encrypt(payload: any) {
   return await new SignJWT(payload)
@@ -21,32 +24,24 @@ export async function decrypt(input: string): Promise<any> {
 }
 
 export async function login(): Promise<void> {
+  if (!apiUrl || !apiEmail || !apiPassword) {
+    throw new Error("API URL, email, and password are required");
+  }
+
   try {
-    const apiUrl = process.env.API_URL;
-    const apiUser = process.env.API_USER;
-    const apiPassword = process.env.API_PASSWORD;
+    const formdata = new FormData();
+    formdata.append("email", apiEmail);
+    formdata.append("password", apiPassword);
 
-    if (!apiUrl || !apiUser || !apiPassword) {
-      throw new Error("Missing required environment variables");
-    }
-
-    const response = await fetch(`${apiUrl}/api/v1/login/`, {
+    const requestOptions = {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: apiUser,
-        password: apiPassword,
-      }),
-    });
+      body: formdata,
+    };
 
-    if (!response.ok) {
-      throw new Error("Login failed");
-    }
+    const response = await fetch(`${apiUrl}/api/v1/login/`, requestOptions);
 
-    const data: { token: string } = await response.json();
-    const token: string = data.token;
+    const data = await response.json();
+    const token = data.token;
     const decoded = decodeJwt(token);
     const expires: Date | undefined = decoded.exp
       ? new Date(decoded.exp * 1000)

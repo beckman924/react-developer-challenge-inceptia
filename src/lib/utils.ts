@@ -24,7 +24,7 @@ export async function fetchClients(): Promise<Clients[]> {
 
     if (!Array.isArray(data)) {
       throw new Error(
-        "Response is not an array of clients: " + JSON.stringify(data)
+        `Response is not an array of clients: ${JSON.stringify(data)}`
       );
     }
 

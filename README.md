@@ -23,7 +23,7 @@ Este proyecto ha sido creado como parte de un challenge de React para la empresa
 
    ```env
    API_URL=*Url proporcionada por InceptiaIA*
-   API_USER=*Usuario proporcionado por InceptiaIA*
+   API_EMAIL=*Email proporcionado por InceptiaIA*
    API_PASSWORD=*Contraseña proporcionada por InceptiaIA*
    JWT_SECRET=*Misma contraseña utilizada en API_PASSWORD, se utiliza para codificar el token*
    ```
