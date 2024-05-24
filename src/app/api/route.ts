@@ -2,9 +2,20 @@ import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-const key = new TextEncoder().encode(process.env.JWT_SECRET);
+const key = new TextEncoder().encode(process.env.JWT_SECRET!);
 
-async function encrypt(payload: any) {
+interface JwtPayload {
+  token: string;
+  expires: number;
+  [key: string]: any;
+}
+
+interface DecodedJwtPayload {
+  exp: number;
+  [key: string]: any;
+}
+
+async function encrypt(payload: JwtPayload): Promise<string> {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -12,15 +23,15 @@ async function encrypt(payload: any) {
     .sign(key);
 }
 
-async function decrypt(input: string): Promise<any> {
+export async function decrypt(input: string): Promise<JwtPayload> {
   const { payload } = await jwtVerify(input, key, {
     algorithms: ["HS256"],
   });
-  return payload;
+  return payload as JwtPayload;
 }
 
-async function login() {
-  const data = await fetch(`${process.env.API_URL}/api/v1/login/`, {
+async function login(): Promise<void> {
+  const response = await fetch(`${process.env.API_URL}/api/v1/login/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -32,44 +43,71 @@ async function login() {
     cache: "no-store",
   });
 
-  const res = await data.json();
-  const token = res.token;
-  const decoded = decodeJwt(token);
-  const expires = decoded.exp;
+  if (!response.ok) {
+    throw new Error("Login failed");
+  }
 
-  const session = await encrypt({
+  const data = await response.json();
+  const token: string = data.token;
+  const decoded: DecodedJwtPayload = decodeJwt(token) as DecodedJwtPayload;
+  const expires: Date = new Date(decoded.exp * 1000);
+
+  const session: string = await encrypt({
     token,
-    expires,
+    expires: decoded.exp,
   });
 
   cookies().set("session", session, { expires, httpOnly: true });
 }
 
-async function getSession() {
-  const session = cookies().get("session")?.value;
-  if (!session) return login();
-  return await decrypt(session);
-}
-
-export async function updateSession(request: NextRequest) {
-  // Refresh the session so it doesn't expire
-  const session = request.cookies.get("session")?.value;
-  if (!session) return login();
-
-  const parsed = await decrypt(session);
-
-  if (parsed.expires <= Date.now() / 1000) {
-    return login();
+export async function getSession(): Promise<JwtPayload | null> {
+  try {
+    const session = cookies().get("session")?.value;
+    if (!session) {
+      throw new Error("No session found");
+    }
+    return await decrypt(session);
+  } catch (error) {
+    console.error("Error in getSession:", error);
+    throw new Error("Could not get session");
   }
 }
 
-async function getClients() {
+export async function updateSession(request: NextRequest): Promise<void> {
+  try {
+    const session = request.cookies.get("session")?.value;
+    if (!session) {
+      await login();
+      return;
+    }
+
+    const parsed = await decrypt(session);
+
+    if (parsed.expires <= Date.now() / 1000) {
+      await login();
+      return;
+    }
+
+    // Refresh the session token before it expires
+    if (parsed.expires - Math.floor(Date.now() / 1000) < 3600) {
+      await login();
+      return;
+    }
+  } catch (error) {
+    console.error("Error in updateSession:", error);
+    await login();
+  }
+}
+
+async function getClients(): Promise<any[]> {
   const session = await getSession();
-  if (!session) null;
+  if (!session) {
+    throw new Error("No session available");
+  }
 
   const { token } = session;
 
-  const data = await fetch(`${process.env.API_URL}/api/v1/clients/`, {
+  const response = await fetch(`${process.env.API_URL}/api/v1/clients/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -77,16 +115,67 @@ async function getClients() {
     },
   });
 
-  return await data.json();
-}
-
-export async function GET() {
-  await login();
-  const clients = await getClients();
-
-  if (!clients) {
-    return Response.json([]);
+  if (!response.ok) {
+    throw new Error("Failed to fetch clients");
   }
 
-  return Response.json(clients);
+  const data = await response.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error(
+      "Response is not an array of clients: " + JSON.stringify(data)
+    );
+  }
+
+  return data;
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    await updateSession(request);
+    const clients = await getClients();
+
+    if (!clients) {
+      return new NextResponse("No clients found", {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
+    return new NextResponse(JSON.stringify(clients), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: any) {
+    console.error("Error in GET:", error);
+
+    if (error.message.includes("No session available")) {
+      return new NextResponse(error.message, {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
+    if (error.message.includes("Failed to fetch clients")) {
+      return new NextResponse(error.message, {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
+    return new NextResponse("An unxpected error occurred, please try again", {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }
 }

@@ -7,12 +7,14 @@ export default function ClientsSelector({
   setSelectedClient,
 }: {
   clients: Clients[];
-  selectedClient: Clients | null;
-  setSelectedClient: React.Dispatch<React.SetStateAction<Clients | null>>;
+  selectedClient: Clients;
+  setSelectedClient: React.Dispatch<React.SetStateAction<Clients>>;
 }) {
   return (
-    <aside className="h-full w-[250px] max-w-[400px] bg-[#eff3f9]">
-      <h3 className="text-base text-[#8f96aa] p-2.5 border h-[45px]">CLIENTE</h3>
+    <aside className="h-screen max-h-[800px] w-[250px] max-w-[400px] bg-[#eff3f9]">
+      <h3 className="text-base text-[#8f96aa] p-2.5 border h-[45px]">
+        CLIENTE
+      </h3>
 
       <ul className="w-full border border-y-[#eff3f9] flex flex-col justify-center overflow-y-auto">
         {clients.map((client) => (
