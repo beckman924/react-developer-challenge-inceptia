@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# React Developer Challenge para InceptiaIA
 
-## Getting Started
+Este proyecto ha sido creado como parte de un challenge de React para la empresa InceptiaIA. A continuación, se describen los pasos para configurar y ejecutar el proyecto utilizando Docker Compose.
 
-First, run the development server:
+## Requisitos Previos
+
+- Docker
+- Docker Compose
+
+## Configuración del Entorno
+
+1. **Clonar el Repositorio**
+
+   Clona este repositorio en tu máquina local:
+   ```bash
+   git clone https://github.com/beckman924/react-developer-challenge-inceptia.git
+   cd react-developer-challenge-inceptia
+   ```
+
+2. **Crear el Archivo `.env.local`**
+
+   Crea un archivo `.env.local` en el directorio raíz del proyecto con el siguiente formato:
+
+   ```env
+   API_URL=*Url proporcionada por InceptiaIA*
+   API_USER=*Usuario proporcionado por InceptiaIA*
+   API_PASSWORD=*Contraseña proporcionada por InceptiaIA*
+   JWT_SECRET=*Misma contraseña utilizada en API_PASSWORD, se utiliza para codificar el token*
+   ```
+
+## Levantar el Proyecto
+
+Para levantar el proyecto, ejecuta el siguiente comando en el directorio raíz del proyecto:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Este comando construirá las imágenes de Docker y levantará los contenedores definidos en el archivo `docker-compose.yml`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Acceso a la Aplicación
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Una vez que los contenedores estén en funcionamiento, podrás acceder a la aplicación a través de tu navegador web en `http://localhost:3000`.
 
-## Learn More
+## Notas Adicionales
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- Para detener los contenedores, utiliza `Ctrl + C` en la terminal donde ejecutaste `docker compose up`, o ejecuta `docker compose down` en otra terminal.
+- Si necesitas reconstruir las imágenes, utiliza `docker compose up --build`.

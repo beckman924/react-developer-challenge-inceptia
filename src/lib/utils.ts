@@ -30,7 +30,7 @@ export async function fetchClients(): Promise<Clients[]> {
 
     return data;
   } catch (error: any) {
-    throw new Error("Error fetching clients: " + error.message);
+    throw new Error(`Error fetching clients: ${error}`);
   }
 }
 
@@ -51,6 +51,6 @@ export async function inboundCase(url: string): Promise<Cases> {
 
     return data;
   } catch (error: any) {
-    throw new Error("Error fetching data: " + error.message);
+    throw new Error(`Error fetching data: ${error}`);
   }
 }
